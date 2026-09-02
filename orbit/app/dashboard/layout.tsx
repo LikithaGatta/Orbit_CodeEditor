@@ -17,7 +17,6 @@ export default async function DashboardLayout({
     NEXTJS: "Lightbulb",
     EXPRESS: "Database",
     VUE: "Compass",
-    HONO: "FlameIcon",
     ANGULAR: "Terminal",
   }
 
@@ -25,7 +24,7 @@ export default async function DashboardLayout({
     id:item.id,
     name:item.title,
     starred:item.Starmark?.[0]?.isMarked || false,
-    icon:technologyIconMap[item.template] || "Code2"
+    icon:technologyIconMap[item.template] || "Temp-Code template"
   }))
 
 
