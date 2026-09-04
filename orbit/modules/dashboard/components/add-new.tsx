@@ -64,13 +64,7 @@ const AddNewButton = () => {
         </div>
 
         <div className="relative overflow-hidden">
-          <Image
-            src={"/add-new.svg"}
-            alt="Create new playground"
-            width={150}
-            height={150}
-            className="transition-transform duration-300 group-hover:scale-110"
-          />
+          
         </div>
       </div>
 
