@@ -11,7 +11,7 @@ export default function Home() {
 
         {/* Blue gradient logo - works in both light and dark mode */}
         <Image
-          src="/Light-Dark Logo.png"
+          src="/logo.png"
           alt="Orbit Code Editor"
           height={500}
           width={500}
