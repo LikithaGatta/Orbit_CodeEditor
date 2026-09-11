@@ -22,6 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 import LoadingStep from "@/modules/playground/components/loader";
 import { PlaygroundEditor } from "@/modules/playground/components/playground-editor";
 import { TemplateFileTree } from "@/modules/playground/components/playground-explorer";
@@ -34,17 +35,19 @@ import {
   TemplateFile,
   TemplateFolder,
 } from "@/modules/playground/lib/path-to-json";
+
 import WebContainerPreview from "@/modules/webcontainers/components/webcontainer-preview";
 import { useWebContainer } from "@/modules/webcontainers/hooks/useWebContainer";
+
 import {
   AlertCircle,
-  Bot,
   FileText,
   FolderOpen,
   Save,
   Settings,
   X,
 } from "lucide-react";
+
 import { useParams } from "next/navigation";
 import React, {
   useCallback,
@@ -52,16 +55,31 @@ import React, {
   useRef,
   useState,
 } from "react";
+
 import { toast } from "sonner";
 
 const MainPlaygroundPage = () => {
   const { id } = useParams<{ id: string }>();
+
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
 
-  const { playgroundData, templateData, isLoading, error, saveTemplateData } =
-    usePlayground(id);
+  // ============================================================
+  // Playground data
+  // ============================================================
+
+  const {
+    playgroundData,
+    templateData,
+    isLoading,
+    error,
+    saveTemplateData,
+  } = usePlayground(id);
 
   const aiSuggestions = useAISuggestions();
+
+  // ============================================================
+  // File explorer state
+  // ============================================================
 
   const {
     setTemplateData,
@@ -82,6 +100,10 @@ const MainPlaygroundPage = () => {
     updateFileContent,
   } = useFileExplorer();
 
+  // ============================================================
+  // WebContainer
+  // ============================================================
+
   const {
     serverUrl,
     isLoading: containerLoading,
@@ -92,6 +114,10 @@ const MainPlaygroundPage = () => {
   } = useWebContainer({ templateData });
 
   const lastSyncedContent = useRef<Map<string, string>>(new Map());
+
+  // ============================================================
+  // Initialize playground
+  // ============================================================
 
   useEffect(() => {
     setPlaygroundId(id);
@@ -165,7 +191,11 @@ const MainPlaygroundPage = () => {
   );
 
   const wrappedHandleRenameFolder = useCallback(
-    (folder: TemplateFolder, newFolderName: string, parentPath: string) => {
+    (
+      folder: TemplateFolder,
+      newFolderName: string,
+      parentPath: string
+    ) => {
       return handleRenameFolder(
         folder,
         newFolderName,
@@ -176,7 +206,14 @@ const MainPlaygroundPage = () => {
     [handleRenameFolder, saveTemplateData]
   );
 
-  const activeFile = openFiles.find((file) => file.id === activeFileId);
+  // ============================================================
+  // Active file
+  // ============================================================
+
+  const activeFile = openFiles.find(
+    (file) => file.id === activeFileId
+  );
+
   const hasUnsavedChanges = openFiles.some(
     (file) => file.hasUnsavedChanges
   );
@@ -195,21 +232,28 @@ const MainPlaygroundPage = () => {
 
       if (!targetFileId) return;
 
-      const fileToSave = openFiles.find((f) => f.id === targetFileId);
+      const fileToSave = openFiles.find(
+        (file) => file.id === targetFileId
+      );
 
       if (!fileToSave) return;
 
-      const latestTemplateData = useFileExplorer.getState().templateData;
+      const latestTemplateData =
+        useFileExplorer.getState().templateData;
 
       if (!latestTemplateData) return;
 
       try {
-        const filePath = findFilePath(fileToSave, latestTemplateData);
+        const filePath = findFilePath(
+          fileToSave,
+          latestTemplateData
+        );
 
         if (!filePath) {
           toast.error(
             `Could not find path for file: ${fileToSave.filename}.${fileToSave.fileExtension}`
           );
+
           return;
         }
 
@@ -217,7 +261,9 @@ const MainPlaygroundPage = () => {
           JSON.stringify(latestTemplateData)
         );
 
-        const updateFileContent = (items: (TemplateFile | TemplateFolder)[]): (TemplateFile | TemplateFolder)[] => {
+        const updateFileContent = (
+          items: (TemplateFile | TemplateFolder)[]
+        ): (TemplateFile | TemplateFolder)[] => {
           return items.map((item) => {
             if ("folderName" in item) {
               return {
@@ -233,21 +279,26 @@ const MainPlaygroundPage = () => {
               return {
                 ...item,
                 content: fileToSave.content,
-              };  
+              };
             }
 
             return item;
           });
         };
 
-
         updatedTemplateData.items = updateFileContent(
           updatedTemplateData.items
         );
 
+        // ======================================================
         // Sync with WebContainer
+        // ======================================================
+
         if (writeFileSync) {
-          await writeFileSync(filePath, fileToSave.content);
+          await writeFileSync(
+            filePath,
+            fileToSave.content
+          );
 
           lastSyncedContent.current.set(
             fileToSave.id,
@@ -262,21 +313,27 @@ const MainPlaygroundPage = () => {
           }
         }
 
+        // ======================================================
         // Save to database
+        // ======================================================
+
         await saveTemplateData(updatedTemplateData);
 
         setTemplateData(updatedTemplateData);
 
+        // ======================================================
         // Update open files
-        const updatedOpenFiles = openFiles.map((f) =>
-          f.id === targetFileId
+        // ======================================================
+
+        const updatedOpenFiles = openFiles.map((file) =>
+          file.id === targetFileId
             ? {
-                ...f,
+                ...file,
                 content: fileToSave.content,
                 originalContent: fileToSave.content,
                 hasUnsavedChanges: false,
               }
-            : f
+            : file
         );
 
         setOpenFiles(updatedOpenFiles);
@@ -305,6 +362,10 @@ const MainPlaygroundPage = () => {
     ]
   );
 
+  // ============================================================
+  // Save all
+  // ============================================================
+
   const handleSaveAll = async () => {
     const unsavedFiles = openFiles.filter(
       (file) => file.hasUnsavedChanges
@@ -320,7 +381,9 @@ const MainPlaygroundPage = () => {
         unsavedFiles.map((file) => handleSave(file.id))
       );
 
-      toast.success(`Saved ${unsavedFiles.length} file(s)`);
+      toast.success(
+        `Saved ${unsavedFiles.length} file(s)`
+      );
     } catch (error) {
       toast.error("Failed to save some files");
     }
@@ -340,7 +403,8 @@ const MainPlaygroundPage = () => {
 
     window.addEventListener("keydown", handleKeyDown);
 
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () =>
+      window.removeEventListener("keydown", handleKeyDown);
   }, [handleSave]);
 
   // ============================================================
@@ -351,13 +415,18 @@ const MainPlaygroundPage = () => {
     return (
       <div
         className="
-          flex flex-col items-center justify-center
-          h-[calc(100vh-4rem)]
-          p-4
+          flex
+          h-[100dvh]
+          w-full
+          flex-col
+          items-center
+          justify-center
+          overflow-hidden
           bg-gradient-to-br
           from-white
           via-blue-50
           to-cyan-50
+          p-4
           dark:from-zinc-950
           dark:via-blue-950/30
           dark:to-cyan-950/20
@@ -365,34 +434,39 @@ const MainPlaygroundPage = () => {
       >
         <div
           className="
-            flex flex-col items-center
-            p-8 rounded-2xl
+            flex
+            flex-col
+            items-center
+            rounded-2xl
             border
             border-blue-100
-            dark:border-blue-900/50
             bg-white/80
-            dark:bg-zinc-950/70
-            backdrop-blur-md
+            p-8
             shadow-[0_10px_40px_-10px_rgba(37,99,235,0.25)]
+            backdrop-blur-md
+            dark:border-blue-900/50
+            dark:bg-zinc-950/70
           "
         >
-          <AlertCircle className="h-12 w-12 text-blue-500 mb-4" />
+          <AlertCircle className="mb-4 h-12 w-12 text-blue-500" />
 
           <h2
             className="
-              text-xl font-semibold mb-2
+              mb-2
               bg-gradient-to-r
               from-blue-500
               via-cyan-500
               to-sky-500
               bg-clip-text
+              text-xl
+              font-semibold
               text-transparent
             "
           >
             Something went wrong
           </h2>
 
-          <p className="text-blue-900/70 dark:text-blue-200/70 mb-4">
+          <p className="mb-4 text-blue-900/70 dark:text-blue-200/70">
             {error}
           </p>
 
@@ -403,12 +477,12 @@ const MainPlaygroundPage = () => {
               from-blue-600
               via-cyan-600
               to-sky-600
-              hover:from-blue-700
-              hover:via-cyan-700
-              hover:to-sky-700
               text-white
               shadow-lg
               shadow-blue-500/20
+              hover:from-blue-700
+              hover:via-cyan-700
+              hover:to-sky-700
             "
           >
             Try Again
@@ -426,13 +500,18 @@ const MainPlaygroundPage = () => {
     return (
       <div
         className="
-          flex flex-col items-center justify-center
-          h-[calc(100vh-4rem)]
-          p-4
+          flex
+          h-[100dvh]
+          w-full
+          flex-col
+          items-center
+          justify-center
+          overflow-hidden
           bg-gradient-to-br
           from-white
           via-blue-50
           to-cyan-50
+          p-4
           dark:from-zinc-950
           dark:via-blue-950/30
           dark:to-cyan-950/20
@@ -440,25 +519,30 @@ const MainPlaygroundPage = () => {
       >
         <div
           className="
-            w-full max-w-md
-            p-6 rounded-2xl
+            w-full
+            max-w-md
+            rounded-2xl
             border
             border-blue-100
-            dark:border-blue-900/50
             bg-white/80
-            dark:bg-zinc-950/70
-            backdrop-blur-md
+            p-6
             shadow-[0_10px_40px_-10px_rgba(37,99,235,0.2)]
+            backdrop-blur-md
+            dark:border-blue-900/50
+            dark:bg-zinc-950/70
           "
         >
           <h2
             className="
-              text-xl font-semibold mb-6 text-center
+              mb-6
               bg-gradient-to-r
               from-blue-500
               via-cyan-500
               to-sky-500
               bg-clip-text
+              text-center
+              text-xl
+              font-semibold
               text-transparent
             "
           >
@@ -497,28 +581,35 @@ const MainPlaygroundPage = () => {
     return (
       <div
         className="
-          flex flex-col items-center justify-center
-          h-[calc(100vh-4rem)]
-          p-4
+          flex
+          h-[100dvh]
+          w-full
+          flex-col
+          items-center
+          justify-center
+          overflow-hidden
           bg-gradient-to-br
           from-white
           via-blue-50
           to-cyan-50
+          p-4
           dark:from-zinc-950
           dark:via-blue-950/30
           dark:to-cyan-950/20
         "
       >
-        <FolderOpen className="h-12 w-12 text-cyan-500 mb-4" />
+        <FolderOpen className="mb-4 h-12 w-12 text-cyan-500" />
 
         <h2
           className="
-            text-xl font-semibold mb-2
+            mb-2
             bg-gradient-to-r
             from-blue-500
             via-cyan-500
             to-sky-500
             bg-clip-text
+            text-xl
+            font-semibold
             text-transparent
           "
         >
@@ -531,6 +622,7 @@ const MainPlaygroundPage = () => {
           className="
             border-blue-200
             text-blue-600
+            hover:border-cyan-300
             hover:bg-blue-50
             hover:text-cyan-600
             dark:border-blue-800
@@ -552,7 +644,12 @@ const MainPlaygroundPage = () => {
     <TooltipProvider>
       <div
         className="
-          min-h-full
+          flex
+          h-[100dvh]
+          min-h-0
+          w-full
+          min-w-0
+          overflow-hidden
           bg-gradient-to-br
           from-white
           via-blue-50/50
@@ -562,6 +659,10 @@ const MainPlaygroundPage = () => {
           dark:to-cyan-950/20
         "
       >
+        {/* ======================================================
+            File Explorer
+        ====================================================== */}
+
         <TemplateFileTree
           data={templateData}
           onFileSelect={handleFileSelect}
@@ -575,76 +676,123 @@ const MainPlaygroundPage = () => {
           onRenameFolder={wrappedHandleRenameFolder}
         />
 
+        {/* ======================================================
+            Main application area
+        ====================================================== */}
+
         <SidebarInset
           className="
+            flex
+            min-h-0
+            min-w-0
+            flex-1
+            flex-col
+            overflow-hidden
             bg-transparent
           "
         >
+          {/* ==================================================
+              Header
+          ================================================== */}
+
           <header
             className="
-              flex h-16 shrink-0 items-center gap-2
+              flex
+              h-16
+              min-h-16
+              shrink-0
+              items-center
+              gap-2
               border-b
               border-blue-100/80
-              dark:border-blue-900/50
-              px-4
               bg-gradient-to-r
               from-white/95
               via-blue-50/90
               to-white/95
+              px-4
+              shadow-[0_2px_20px_-2px_rgba(37,99,235,0.12)]
+              backdrop-blur-md
+              dark:border-blue-900/50
               dark:from-zinc-900/95
               dark:via-blue-950/40
               dark:to-zinc-900/95
-              backdrop-blur-md
-              shadow-[0_2px_20px_-2px_rgba(37,99,235,0.12)]
             "
           >
             <SidebarTrigger
               className="
+                shrink-0
                 text-blue-600
-                hover:text-cyan-600
                 hover:bg-blue-50
+                hover:text-cyan-600
                 dark:text-blue-400
-                dark:hover:text-cyan-400
                 dark:hover:bg-blue-950/40
+                dark:hover:text-cyan-400
               "
             />
 
             <Separator
               orientation="vertical"
               className="
-                mr-2 h-4
+                mr-2
+                h-4
+                shrink-0
                 bg-blue-200
                 dark:bg-blue-900
               "
             />
 
-            <div className="flex flex-1 items-center gap-2">
-              <div className="flex flex-col flex-1">
+            <div
+              className="
+                flex
+                min-w-0
+                flex-1
+                items-center
+                gap-2
+              "
+            >
+              <div
+                className="
+                  flex
+                  min-w-0
+                  flex-1
+                  flex-col
+                  overflow-hidden
+                "
+              >
                 <h1
                   className="
-                    text-sm font-semibold
+                    truncate
                     bg-gradient-to-r
                     from-blue-600
                     via-cyan-600
                     to-sky-600
+                    bg-clip-text
+                    text-sm
+                    font-semibold
+                    text-transparent
                     dark:from-blue-400
                     dark:via-cyan-400
                     dark:to-sky-400
-                    bg-clip-text
-                    text-transparent
                   "
                 >
                   {playgroundData?.title || "Code Playground"}
                 </h1>
 
-                <p className="text-xs text-blue-700/60 dark:text-blue-300/60">
+                <p className="truncate text-xs text-blue-700/60 dark:text-blue-300/60">
                   {openFiles.length} File(s) Open
-                  {hasUnsavedChanges && " • Unsaved changes"}
+                  {hasUnsavedChanges &&
+                    " • Unsaved changes"}
                 </p>
               </div>
 
-              <div className="flex items-center gap-1">
-                {/* Save */}
+              <div
+                className="
+                  flex
+                  shrink-0
+                  items-center
+                  gap-1
+                "
+              >
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -652,18 +800,20 @@ const MainPlaygroundPage = () => {
                       variant="outline"
                       onClick={() => handleSave()}
                       disabled={
-                        !activeFile || !activeFile.hasUnsavedChanges
+                        !activeFile ||
+                        !activeFile.hasUnsavedChanges
                       }
                       className="
+                        shrink-0
                         border-blue-200
                         text-blue-600
-                        hover:text-cyan-600
-                        hover:bg-blue-50
                         hover:border-cyan-300
+                        hover:bg-blue-50
+                        hover:text-cyan-600
                         dark:border-blue-800
                         dark:text-blue-400
-                        dark:hover:bg-blue-950/40
                         dark:hover:border-cyan-700
+                        dark:hover:bg-blue-950/40
                       "
                     >
                       <Save className="h-4 w-4" />
@@ -675,7 +825,6 @@ const MainPlaygroundPage = () => {
                   </TooltipContent>
                 </Tooltip>
 
-                {/* Save All */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -684,15 +833,16 @@ const MainPlaygroundPage = () => {
                       onClick={handleSaveAll}
                       disabled={!hasUnsavedChanges}
                       className="
+                        shrink-0
                         border-blue-200
                         text-blue-600
-                        hover:text-cyan-600
-                        hover:bg-blue-50
                         hover:border-cyan-300
+                        hover:bg-blue-50
+                        hover:text-cyan-600
                         dark:border-blue-800
                         dark:text-blue-400
-                        dark:hover:bg-blue-950/40
                         dark:hover:border-cyan-700
+                        dark:hover:bg-blue-950/40
                       "
                     >
                       <Save className="h-4 w-4" />
@@ -705,29 +855,30 @@ const MainPlaygroundPage = () => {
                   </TooltipContent>
                 </Tooltip>
 
-                {/* AI */}
                 <ToggleAI
                   isEnabled={aiSuggestions.isEnabled}
                   onToggle={aiSuggestions.toggleEnabled}
-                  suggestionLoading={aiSuggestions.isLoading}
+                  suggestionLoading={
+                    aiSuggestions.isLoading
+                  }
                 />
 
-                {/* Settings */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm"
                       variant="outline"
                       className="
+                        shrink-0
                         border-blue-200
                         text-blue-600
-                        hover:text-cyan-600
-                        hover:bg-blue-50
                         hover:border-cyan-300
+                        hover:bg-blue-50
+                        hover:text-cyan-600
                         dark:border-blue-800
                         dark:text-blue-400
-                        dark:hover:bg-blue-950/40
                         dark:hover:border-cyan-700
+                        dark:hover:bg-blue-950/40
                       "
                     >
                       <Settings className="h-4 w-4" />
@@ -738,15 +889,17 @@ const MainPlaygroundPage = () => {
                     align="end"
                     className="
                       border-blue-100
-                      dark:border-blue-900
                       bg-white/95
-                      dark:bg-zinc-950/95
                       backdrop-blur-md
+                      dark:border-blue-900
+                      dark:bg-zinc-950/95
                     "
                   >
                     <DropdownMenuItem
                       onClick={() =>
-                        setIsPreviewVisible(!isPreviewVisible)
+                        setIsPreviewVisible(
+                          !isPreviewVisible
+                        )
                       }
                       className="
                         focus:bg-blue-50
@@ -755,7 +908,10 @@ const MainPlaygroundPage = () => {
                         dark:focus:text-blue-400
                       "
                     >
-                      {isPreviewVisible ? "Hide" : "Show"} Preview
+                      {isPreviewVisible
+                        ? "Hide"
+                        : "Show"}{" "}
+                      Preview
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator className="bg-blue-100 dark:bg-blue-900" />
@@ -777,37 +933,76 @@ const MainPlaygroundPage = () => {
             </div>
           </header>
 
-          {/* ================================================== */}
-          {/* Editor area */}
-          {/* ================================================== */}
+          {/* ==================================================
+              Workspace
+          ================================================== */}
 
-          <div className="h-[calc(100vh-4rem)]">
+          <div
+            className="
+              flex
+              min-h-0
+              min-w-0
+              flex-1
+              overflow-hidden
+            "
+          >
             {openFiles.length > 0 ? (
-              <div className="h-full flex flex-col">
-                {/* Tabs */}
+              <div
+                className="
+                  flex
+                  h-full
+                  min-h-0
+                  min-w-0
+                  flex-1
+                  flex-col
+                  overflow-hidden
+                "
+              >
+                {/* ==================================================
+                    File Tabs
+                ================================================== */}
+
                 <div
                   className="
+                    min-w-0
+                    shrink-0
+                    overflow-hidden
                     border-b
                     border-blue-100
-                    dark:border-blue-900/60
                     bg-gradient-to-r
                     from-white/90
                     via-blue-50/70
                     to-cyan-50/70
+                    backdrop-blur-md
+                    dark:border-blue-900/60
                     dark:from-zinc-900/90
                     dark:via-blue-950/30
                     dark:to-cyan-950/20
-                    backdrop-blur-md
                   "
                 >
                   <Tabs
                     value={activeFileId || ""}
                     onValueChange={setActiveFileId}
                   >
-                    <div className="flex items-center justify-between px-4 py-2">
+                    <div
+                      className="
+                        flex
+                        min-w-0
+                        items-center
+                        justify-between
+                        gap-2
+                        px-4
+                        py-2
+                      "
+                    >
                       <TabsList
                         className="
+                          flex
                           h-8
+                          min-w-0
+                          max-w-full
+                          shrink
+                          overflow-x-auto
                           bg-transparent
                           p-0
                         "
@@ -817,8 +1012,10 @@ const MainPlaygroundPage = () => {
                             key={file.id}
                             value={file.id}
                             className="
+                              group
                               relative
                               h-8
+                              shrink-0
                               px-3
                               text-blue-700/70
                               hover:text-blue-600
@@ -830,26 +1027,29 @@ const MainPlaygroundPage = () => {
                               dark:hover:text-blue-300
                               dark:data-[state=active]:bg-zinc-900
                               dark:data-[state=active]:text-cyan-400
-                              group
                             "
                           >
                             <div className="flex items-center gap-2">
                               <FileText
                                 className="
                                   h-3 w-3
+                                  shrink-0
                                   text-blue-500
                                   dark:text-blue-400
                                 "
                               />
 
-                              <span>
-                                {file.filename}.{file.fileExtension}
+                              <span className="truncate">
+                                {file.filename}.
+                                {file.fileExtension}
                               </span>
 
                               {file.hasUnsavedChanges && (
                                 <span
                                   className="
-                                    h-2 w-2
+                                    h-2
+                                    w-2
+                                    shrink-0
                                     rounded-full
                                     bg-gradient-to-r
                                     from-blue-500
@@ -861,15 +1061,19 @@ const MainPlaygroundPage = () => {
 
                               <span
                                 className="
-                                  ml-2
-                                  h-4 w-4
-                                  rounded-sm
-                                  flex items-center justify-center
-                                  opacity-0
-                                  group-hover:opacity-100
-                                  transition-opacity
+                                  ml-1
+                                  flex
+                                  h-4
+                                  w-4
+                                  shrink-0
                                   cursor-pointer
+                                  items-center
+                                  justify-center
+                                  rounded-sm
                                   text-blue-500
+                                  opacity-0
+                                  transition-opacity
+                                  group-hover:opacity-100
                                   hover:bg-red-500
                                   hover:text-white
                                 "
@@ -892,14 +1096,15 @@ const MainPlaygroundPage = () => {
                           onClick={closeAllFiles}
                           className="
                             h-6
+                            shrink-0
                             px-2
                             text-xs
                             text-blue-600
-                            hover:text-cyan-600
                             hover:bg-blue-50
+                            hover:text-cyan-600
                             dark:text-blue-400
-                            dark:hover:text-cyan-400
                             dark:hover:bg-blue-950/40
+                            dark:hover:text-cyan-400
                           "
                         >
                           Close All
@@ -909,52 +1114,113 @@ const MainPlaygroundPage = () => {
                   </Tabs>
                 </div>
 
-                {/* Editor + Preview */}
-                <div className="flex-1">
+                {/* ==================================================
+                    Editor + Preview
+                ================================================== */}
+
+                <div
+                  className="
+                    flex
+                    min-h-0
+                    min-w-0
+                    flex-1
+                    overflow-hidden
+                  "
+                >
                   <ResizablePanelGroup
                     orientation="horizontal"
-                    className="h-full"
+                    className="
+                      flex
+                      h-full
+                      min-h-0
+                      min-w-0
+                      w-full
+                      overflow-hidden
+                    "
                   >
+                    {/* ==================================================
+                        Editor
+                    ================================================== */}
+
                     <ResizablePanel
-                      defaultSize={isPreviewVisible ? 50 : 100}
+                      defaultSize={
+                        isPreviewVisible ? 50 : 100
+                      }
+                      minSize={30}
                       className="
-                        bg-white
-                        dark:bg-zinc-950
+                        min-h-0
+                        min-w-0
+                        overflow-hidden
                       "
                     >
-                      <PlaygroundEditor
-                        activeFile={activeFile}
-                        content={activeFile?.content || ""}
-                        onContentChange={(value) =>
-                          activeFileId &&
-                          updateFileContent(activeFileId, value)
-                        }
-                        suggestion={aiSuggestions.suggestion}
-                        suggestionLoading={aiSuggestions.isLoading}
-                        suggestionPosition={aiSuggestions.position}
-                        onAcceptSuggestion={(editor, monaco) =>
-                          aiSuggestions.acceptSuggestion(
+                      <div
+                        className="
+                          h-full
+                          min-h-0
+                          min-w-0
+                          overflow-hidden
+                        "
+                      >
+                        <PlaygroundEditor
+                          activeFile={activeFile}
+                          content={
+                            activeFile?.content || ""
+                          }
+                          onContentChange={(value) =>
+                            activeFileId &&
+                            updateFileContent(
+                              activeFileId,
+                              value
+                            )
+                          }
+                          suggestion={
+                            aiSuggestions.suggestion
+                          }
+                          suggestionLoading={
+                            aiSuggestions.isLoading
+                          }
+                          suggestionPosition={
+                            aiSuggestions.position
+                          }
+                          onAcceptSuggestion={(
                             editor,
                             monaco
-                          )
-                        }
-                        onRejectSuggestion={(editor) =>
-                          aiSuggestions.rejectSuggestion(editor)
-                        }
-                        onTriggerSuggestion={(type, editor) =>
-                          aiSuggestions.fetchSuggestion(
+                          ) =>
+                            aiSuggestions.acceptSuggestion(
+                              editor,
+                              monaco
+                            )
+                          }
+                          onRejectSuggestion={(editor) =>
+                            aiSuggestions.rejectSuggestion(
+                              editor
+                            )
+                          }
+                          onTriggerSuggestion={(
                             type,
                             editor
-                          )
-                        }
-                      />
+                          ) =>
+                            aiSuggestions.fetchSuggestion(
+                              type,
+                              editor
+                            )
+                          }
+                        />
+                      </div>
                     </ResizablePanel>
+
+                    {/* ==================================================
+                        Preview
+                    ================================================== */}
 
                     {isPreviewVisible && (
                       <>
                         <ResizableHandle
                           className="
+                            w-1
+                            shrink-0
                             bg-blue-100
+                            transition-colors
                             hover:bg-gradient-to-b
                             hover:from-blue-400
                             hover:via-cyan-400
@@ -965,25 +1231,38 @@ const MainPlaygroundPage = () => {
 
                         <ResizablePanel
                           defaultSize={50}
+                          minSize={25}
                           className="
-                            bg-gradient-to-br
-                            from-white
-                            via-blue-50/30
-                            to-cyan-50/40
-                            dark:from-zinc-950
-                            dark:via-blue-950/10
-                            dark:to-cyan-950/10
+                            min-h-0
+                            min-w-0
+                            overflow-hidden
                           "
                         >
-                          <WebContainerPreview
-                            templateData={templateData}
-                            instance={instance}
-                            writeFileSync={writeFileSync}
-                            isLoading={containerLoading}
-                            error={containerError}
-                            serverUrl={serverUrl!}
-                            forceResetup={false}
-                          />
+                          <div
+                            className="
+                              flex
+                              h-full
+                              min-h-0
+                              min-w-0
+                              w-full
+                              flex-col
+                              overflow-hidden
+                            "
+                          >
+                            <WebContainerPreview
+                              templateData={templateData}
+                              instance={instance}
+                              writeFileSync={
+                                writeFileSync
+                              }
+                              isLoading={
+                                containerLoading
+                              }
+                              error={containerError}
+                              serverUrl={serverUrl!}
+                              forceResetup={false}
+                            />
+                          </div>
                         </ResizablePanel>
                       </>
                     )}
@@ -993,40 +1272,48 @@ const MainPlaygroundPage = () => {
             ) : (
               <div
                 className="
-                  flex flex-col h-full
-                  items-center justify-center
-                  text-blue-400/70
-                  dark:text-blue-300/50
+                  flex
+                  h-full
+                  min-h-0
+                  min-w-0
+                  flex-1
+                  flex-col
+                  items-center
+                  justify-center
                   gap-4
+                  overflow-hidden
                   bg-gradient-to-br
                   from-white
                   via-blue-50/50
                   to-cyan-50/60
+                  text-blue-400/70
                   dark:from-zinc-950
                   dark:via-blue-950/20
                   dark:to-cyan-950/20
+                  dark:text-blue-300/50
                 "
               >
                 <div
                   className="
-                    p-5
                     rounded-2xl
+                    border
+                    border-blue-100
                     bg-gradient-to-br
                     from-blue-50
                     via-cyan-50
                     to-sky-50
+                    p-5
+                    shadow-[0_10px_30px_-10px_rgba(37,99,235,0.2)]
+                    dark:border-blue-900/50
                     dark:from-blue-950/40
                     dark:via-cyan-950/30
                     dark:to-sky-950/20
-                    border
-                    border-blue-100
-                    dark:border-blue-900/50
-                    shadow-[0_10px_30px_-10px_rgba(37,99,235,0.2)]
                   "
                 >
                   <FileText
                     className="
-                      h-16 w-16
+                      h-16
+                      w-16
                       text-blue-400
                       dark:text-blue-500
                     "
@@ -1036,12 +1323,13 @@ const MainPlaygroundPage = () => {
                 <div className="text-center">
                   <p
                     className="
-                      text-lg font-semibold
                       bg-gradient-to-r
                       from-blue-500
                       via-cyan-500
                       to-sky-500
                       bg-clip-text
+                      text-lg
+                      font-semibold
                       text-transparent
                     "
                   >
@@ -1055,7 +1343,8 @@ const MainPlaygroundPage = () => {
                       dark:text-blue-300/50
                     "
                   >
-                    Select a file from the sidebar to start editing
+                    Select a file from the sidebar to
+                    start editing
                   </p>
                 </div>
               </div>
