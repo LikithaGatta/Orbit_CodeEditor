@@ -184,42 +184,45 @@ const WebContainerPreview = ({
         }));
         setCurrentStep(4);
 
-        // STEP-4 Start The Server
+      // STEP-4 Start The Server
 
+      if (terminalRef.current?.writeToTerminal) {
+        terminalRef.current.writeToTerminal(
+          "🚀 Starting development server...\r\n"
+        );
+      }
+
+      const startProcess = await instance.spawn("npm", ["run", "dev"]);
+
+      instance.on("server-ready", (port: number, url: string) => {
         if (terminalRef.current?.writeToTerminal) {
           terminalRef.current.writeToTerminal(
-            "🚀 Starting development server...\r\n"
+            `🌐 Server ready at ${url}\r\n`
           );
         }
 
-        const startProcess = await instance.spawn("npm", ["run", "start"]);
+        setPreviewUrl(url);
 
-        instance.on("server-ready", (port: number, url: string) => {
-          if (terminalRef.current?.writeToTerminal) {
-            terminalRef.current.writeToTerminal(
-              `🌐 Server ready at ${url}\r\n`
-            );
-          }
-          setPreviewUrl(url);
-          setLoadingState((prev) => ({
-            ...prev,
-            starting: false,
-            ready: true,
-          }));
-          setIsSetupComplete(true);
-          setIsSetupInProgress(false);
-        });
+        setLoadingState((prev) => ({
+          ...prev,
+          starting: false,
+          ready: true,
+        }));
 
-        // Handle start process output - stream to terminal
-        startProcess.output.pipeTo(
-          new WritableStream({
-            write(data) {
-              if (terminalRef.current?.writeToTerminal) {
-                terminalRef.current.writeToTerminal(data);
-              }
-            },
-          })
-        );
+        setIsSetupComplete(true);
+        setIsSetupInProgress(false);
+      });
+
+      // Handle start process output - stream to terminal
+      startProcess.output.pipeTo(
+        new WritableStream({
+          write(data) {
+            if (terminalRef.current?.writeToTerminal) {
+              terminalRef.current.writeToTerminal(data);
+            }
+          },
+        })
+      );
       } catch (err) {
         console.error("Error setting up container:", err);
         const errorMessage = err instanceof Error ? err.message : String(err);
@@ -366,3 +369,28 @@ const WebContainerPreview = ({
 };
 
 export default WebContainerPreview;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
