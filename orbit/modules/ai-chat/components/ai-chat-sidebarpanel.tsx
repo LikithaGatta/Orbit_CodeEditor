@@ -134,7 +134,9 @@ const MessageTypeIndicator: React.FC<{
 
       <div className="flex shrink-0 items-center gap-2 text-xs text-zinc-500">
         {model && (
-          <span className="max-w-[120px] truncate">{model}</span>
+          <span className="max-w-[120px] truncate">
+            {model}
+          </span>
         )}
 
         {tokens && <span>{tokens} tokens</span>}
@@ -265,7 +267,9 @@ ${content}`;
       });
 
       if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
+        throw new Error(
+          `Request failed with status ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -350,10 +354,13 @@ ${content}`;
     });
 
   /*
-   * Important:
-   * The panel is rendered into document.body instead of inside
-   * the playground layout. This prevents it from being clipped
-   * by overflow-hidden, resizable panels, or stacking contexts.
+   * Render the panel directly into document.body.
+   *
+   * This prevents the AI panel from being clipped by:
+   * - overflow-hidden parent containers
+   * - resizable panels
+   * - editor stacking contexts
+   * - WebContainer layout containers
    */
   if (!isOpen || typeof document === "undefined") {
     return null;
@@ -361,22 +368,7 @@ ${content}`;
 
   return createPortal(
     <TooltipProvider>
-      <div className="fixed inset-0 z-[99999] pointer-events-none">
-        {/* Full-screen backdrop */}
-        <button
-          type="button"
-          aria-label="Close AI assistant"
-          onClick={onClose}
-          className="
-            pointer-events-auto
-            absolute
-            inset-0
-            cursor-default
-            bg-black/50
-            backdrop-blur-sm
-          "
-        />
-
+      <div className="pointer-events-none fixed inset-0 z-[99999]">
         {/* AI Side Panel */}
         <aside
           role="dialog"
@@ -390,7 +382,6 @@ ${content}`;
             flex
             h-[100dvh]
             w-full
-            max-w-[680px]
             min-w-0
             flex-col
             overflow-hidden
@@ -398,6 +389,8 @@ ${content}`;
             border-zinc-800
             bg-zinc-950
             shadow-2xl
+            sm:w-[50vw]
+            sm:max-w-[760px]
           "
         >
           {/* Header */}
@@ -407,7 +400,7 @@ ${content}`;
               <div className="flex min-w-0 items-center gap-3">
                 <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-900">
                   <Image
-                    src="/logo.svg"
+                    src="/ollama-logo.svg"
                     alt="Orbit Logo"
                     width={26}
                     height={26}
@@ -416,7 +409,7 @@ ${content}`;
 
                 <div className="min-w-0">
                   <h2 className="truncate text-base font-semibold text-zinc-100 sm:text-lg">
-                    Enhanced AI Assistant
+                    AI Assistant
                   </h2>
 
                   <p className="text-xs text-zinc-400 sm:text-sm">
@@ -431,6 +424,7 @@ ${content}`;
                     <Button
                       variant="ghost"
                       size="sm"
+                      aria-label="AI assistant settings"
                       className="
                         h-8
                         w-8
@@ -549,11 +543,15 @@ ${content}`;
             {/* Controls */}
             <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 pb-4 sm:px-5">
               <div className="flex min-w-0 shrink-0 items-center gap-2 text-xs text-zinc-400">
-                <span className="text-zinc-500">Model:</span>
+                <span className="text-zinc-500">
+                  Model:
+                </span>
 
                 <select
                   value={model}
-                  onChange={(event) => setModel(event.target.value)}
+                  onChange={(event) =>
+                    setModel(event.target.value)
+                  }
                   className="
                     h-8
                     max-w-[130px]
@@ -570,9 +568,17 @@ ${content}`;
                     focus:ring-blue-500
                   "
                 >
-                  <option value="llama3.2">llama3.2</option>
-                  <option value="codellama">codellama</option>
-                  <option value="llama2">llama2</option>
+                  <option value="llama3.2">
+                    llama3.2
+                  </option>
+
+                  <option value="codellama">
+                    codellama
+                  </option>
+
+                  <option value="llama2">
+                    llama2
+                  </option>
                 </select>
               </div>
 
@@ -658,7 +664,7 @@ ${content}`;
           </div>
 
           {/* Messages */}
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-zinc-950">
+          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-zinc-950">
             <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-5">
               {filteredMessages.length === 0 && !isLoading && (
                 <div className="py-10 text-center text-zinc-500 sm:py-16">
@@ -804,7 +810,9 @@ ${content}`;
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setInput(message.content)}
+                          onClick={() =>
+                            setInput(message.content)
+                          }
                           className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-200"
                         >
                           <RefreshCw className="h-3 w-3" />
@@ -845,7 +853,10 @@ ${content}`;
                 </div>
               )}
 
-              <div ref={messagesEndRef} className="h-1" />
+              <div
+                ref={messagesEndRef}
+                className="h-1"
+              />
             </div>
           </div>
 
@@ -875,7 +886,9 @@ ${content}`;
                           : "Describe what you'd like me to optimize..."
                   }
                   value={input}
-                  onChange={(event) => setInput(event.target.value)}
+                  onChange={(event) =>
+                    setInput(event.target.value)
+                  }
                   onKeyDown={(event) => {
                     if (
                       event.key === "Enter" &&
