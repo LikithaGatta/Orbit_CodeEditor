@@ -108,31 +108,45 @@ function analyzeCodeContext(
   };
 }
 
-function buildPrompt(context: CodeContext, suggestionType: string): string {
+function buildPrompt(
+  context: CodeContext,
+  suggestionType: string
+): string {
   return `You are an expert code completion assistant. Generate a ${suggestionType} suggestion.
 
 Language: ${context.language}
+
 Framework: ${context.framework}
 
 Context:
+
 ${context.beforeContext}
+
 ${context.currentLine.substring(
-  0,
-  context.cursorPosition.column
-)}|CURSOR|${context.currentLine.substring(context.cursorPosition.column)}
+    0,
+    context.cursorPosition.column
+)}|CURSOR|${context.currentLine.substring(
+    context.cursorPosition.column
+)}
+
 ${context.afterContext}
 
 Analysis:
+
 - In Function: ${context.isInFunction}
 - In Class: ${context.isInClass}
 - After Comment: ${context.isAfterComment}
-- Incomplete Patterns: ${context.incompletePatterns.join(", ") || "None"}
+- Incomplete Patterns: ${
+    context.incompletePatterns.join(", ") || "None"
+  }
 
 Instructions:
-1. Provide only the code that should be inserted at the cursor
-2. Maintain proper indentation and style
-3. Follow ${context.language} best practices
-4. Make the suggestion contextually appropriate
+
+1. Provide only the code that should be inserted at the cursor.
+2. Maintain proper indentation and style.
+3. Follow ${context.language} best practices.
+4. Make the suggestion contextually appropriate.
+5. Do not include explanations or Markdown code fences.
 
 Generate suggestion:`;
 }
@@ -141,35 +155,45 @@ async function generateSuggestion(prompt: string): Promise<string> {
   try {
     const response = await fetch("http://localhost:11434/api/generate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        model: "codellama:latest",
+        model: "llama3.2:latest",
         prompt,
         stream: false,
-        option: {
+        options: {
           temperature: 0.7,
-          max_tokens: 300,
+          num_predict: 300,
         },
       }),
     });
 
-       if (!response.ok) {
-      throw new Error(`AI service error: ${response.statusText}`)
+    if (!response.ok) {
+      const errorText = await response.text();
+
+      throw new Error(
+        `AI service error: ${response.status} ${response.statusText} - ${errorText}`
+      );
     }
 
-      const data = await response.json()
-    let suggestion = data.response
+    const data = await response.json();
 
-     // Clean up the suggestion
+    let suggestion = data.response || "";
+
+    // Remove Markdown code fences if Ollama returns them
     if (suggestion.includes("```")) {
-      const codeMatch = suggestion.match(/```[\w]*\n?([\s\S]*?)```/)
-      suggestion = codeMatch ? codeMatch[1].trim() : suggestion
+      suggestion = suggestion
+        .replace(/^```[a-zA-Z0-9+#.-]*\s*/, "")
+        .replace(/\s*```$/, "")
+        .trim();
     }
 
-    return suggestion
+    return suggestion;
   } catch (error) {
-      console.error("AI generation error:", error)
-    return "// AI suggestion unavailable"
+    console.error("AI generation error:", error);
+
+    return "// AI suggestion unavailable";
   }
 }
 
@@ -213,41 +237,84 @@ function detectFramework(content: string): string {
   return "None";
 }
 
-function detectInFunction(lines: string[], currentLine: number): boolean {
+function detectInFunction(
+  lines: string[],
+  currentLine: number
+): boolean {
   for (let i = currentLine - 1; i >= 0; i--) {
     const line = lines[i];
-    if (line?.match(/^\s*(function|def|const\s+\w+\s*=|let\s+\w+\s*=)/))
+
+    if (
+      line?.match(
+        /^\s*(function|def|const\s+\w+\s*=|let\s+\w+\s*=)/
+      )
+    ) {
       return true;
-    if (line?.match(/^\s*}/)) break;
+    }
+
+    if (line?.match(/^\s*}/)) {
+      break;
+    }
   }
+
   return false;
 }
 
-function detectInClass(lines: string[], currentLine: number): boolean {
+function detectInClass(
+  lines: string[],
+  currentLine: number
+): boolean {
   for (let i = currentLine - 1; i >= 0; i--) {
     const line = lines[i];
-    if (line?.match(/^\s*(class|interface)\s+/)) return true;
+
+    if (line?.match(/^\s*(class|interface)\s+/)) {
+      return true;
+    }
   }
+
   return false;
 }
 
-function detectAfterComment(line: string, column: number): boolean {
+function detectAfterComment(
+  line: string,
+  column: number
+): boolean {
   const beforeCursor = line.substring(0, column);
+
   return /\/\/.*$/.test(beforeCursor) || /#.*$/.test(beforeCursor);
 }
 
-function detectIncompletePatterns(line: string, column: number): string[] {
+function detectIncompletePatterns(
+  line: string,
+  column: number
+): string[] {
   const beforeCursor = line.substring(0, column);
   const patterns: string[] = [];
+  const trimmed = beforeCursor.trim();
 
-  if (/^\s*(if|while|for)\s*\($/.test(beforeCursor.trim()))
+  if (/^(if|while|for)\s*\(?.*$/.test(trimmed)) {
     patterns.push("conditional");
-  if (/^\s*(function|def)\s*$/.test(beforeCursor.trim()))
+  }
+
+  if (/^(function|def)\s*$/.test(trimmed)) {
     patterns.push("function");
-  if (/\{\s*$/.test(beforeCursor)) patterns.push("object");
-  if (/\[\s*$/.test(beforeCursor)) patterns.push("array");
-  if (/=\s*$/.test(beforeCursor)) patterns.push("assignment");
-  if (/\.\s*$/.test(beforeCursor)) patterns.push("method-call");
+  }
+
+  if (/\{\s*$/.test(beforeCursor)) {
+    patterns.push("object");
+  }
+
+  if (/\[\s*$/.test(beforeCursor)) {
+    patterns.push("array");
+  }
+
+  if (/=\s*$/.test(beforeCursor)) {
+    patterns.push("assignment");
+  }
+
+  if (/\.\s*$/.test(beforeCursor)) {
+    patterns.push("method-call");
+  }
 
   return patterns;
 }
